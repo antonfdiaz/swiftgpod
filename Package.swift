@@ -1,13 +1,9 @@
 // swift-tools-version: 6.0
 import PackageDescription
+import Foundation
 
-#if arch(arm64)
-let homebrewPrefix = "/opt/homebrew"
-#elseif arch(x86_64)
-let homebrewPrefix = "/usr/local"
-#else
-#error("swiftgpod supports Homebrew on Apple Silicon and Intel Macs only.")
-#endif
+let packageRoot = URL(fileURLWithPath: #filePath).deletingLastPathComponent().path
+let dependenciesRoot = "\(packageRoot)/Dependencies"
 
 let package = Package(
     name: "libgpod",
@@ -16,17 +12,8 @@ let package = Package(
         .library(name: "Clibgpod", targets: ["Clibgpod"]),
     ],
     targets: [
-        .systemLibrary(
-            name: "CGLib",
-            pkgConfig: "glib-2.0",
-            providers: [
-                .brew(["glib"]),
-                .apt(["libglib2.0-dev"]),
-            ]
-        ),
         .target(
             name: "Clibgpod",
-            dependencies: ["CGLib"],
             path: "src",
             exclude: [
                 "gchecksum.c",
@@ -37,28 +24,26 @@ let package = Package(
                 .headerSearchPath("."),
                 .define("HAVE_CONFIG_H", to: "1"),
                 .unsafeFlags([
-                    // gobject-2.0
-                    "-I\(homebrewPrefix)/include",
-                    "-I\(homebrewPrefix)/include/glib-2.0",
-                    "-I\(homebrewPrefix)/lib/glib-2.0/include",
-                    // libplist
-                    "-I\(homebrewPrefix)/include",
-                    // libxml2
                     "-I/usr/include/libxml2",
                 ]),
             ],
             linkerSettings: [
                 .unsafeFlags([
-                    "-L\(homebrewPrefix)/lib",
-                    "-lgobject-2.0",
+                    "-L\(dependenciesRoot)/lib",
                     "-lgmodule-2.0",
+                    "-lgobject-2.0",
                     "-lglib-2.0",
+                    "-lpcre2-8",
+                    "-lffi",
                     "-lintl",
                     "-lplist-2.0",
                     "-lsqlite3",
                     "-lxml2",
                     "-lz",
                     "-lm",
+                    "-framework", "Foundation",
+                    "-framework", "CoreFoundation",
+                    "-framework", "CoreServices",
                 ]),
             ]
         ),
