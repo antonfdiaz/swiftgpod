@@ -37,6 +37,7 @@ let package = Package(
                     "-lffi",
                     "-lintl",
                     "-lplist-2.0",
+                    "-liconv",
                     "-lsqlite3",
                     "-lxml2",
                     "-lz",
