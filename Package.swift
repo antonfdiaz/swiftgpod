@@ -1,6 +1,14 @@
 // swift-tools-version: 6.0
 import PackageDescription
 
+#if arch(arm64)
+let homebrewPrefix = "/opt/homebrew"
+#elseif arch(x86_64)
+let homebrewPrefix = "/usr/local"
+#else
+#error("swiftgpod supports Homebrew on Apple Silicon and Intel Macs only.")
+#endif
+
 let package = Package(
     name: "libgpod",
     products: [
@@ -30,18 +38,18 @@ let package = Package(
                 .define("HAVE_CONFIG_H", to: "1"),
                 .unsafeFlags([
                     // gobject-2.0
-                    "-I/opt/homebrew/include",
-                    "-I/opt/homebrew/include/glib-2.0",
-                    "-I/opt/homebrew/lib/glib-2.0/include",
+                    "-I\(homebrewPrefix)/include",
+                    "-I\(homebrewPrefix)/include/glib-2.0",
+                    "-I\(homebrewPrefix)/lib/glib-2.0/include",
                     // libplist
-                    "-I/opt/homebrew/include",
+                    "-I\(homebrewPrefix)/include",
                     // libxml2
                     "-I/usr/include/libxml2",
                 ]),
             ],
             linkerSettings: [
                 .unsafeFlags([
-                    "-L/opt/homebrew/lib",
+                    "-L\(homebrewPrefix)/lib",
                     "-lgobject-2.0",
                     "-lgmodule-2.0",
                     "-lglib-2.0",
