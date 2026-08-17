@@ -2371,6 +2371,15 @@ static glong get_playlist (FImport *fimp, guint mhsd_type, glong mhyp_seek)
   fprintf(stderr, "pln: %s(%d Itdb_Tracks) \n", plitem->name, (int)plitem->num);
 #endif
 
+  /* Older libgpod versions wrote every playlist into both the type 2 and
+     type 3 sections. Skip duplicates by id so re-parsing such a database
+     doesn't double every playlist. */
+  if (mhsd_type != 5 && plitem->id != 0 &&
+      itdb_playlist_by_id (fimp->itdb, plitem->id)) {
+      itdb_playlist_free (plitem);
+      return nextseek;
+  }
+
   /* add new playlist */
   if (mhsd_type == 5) {
       itdb_playlist_add_mhsd5_playlist (fimp->itdb, plitem, -1);
@@ -3191,11 +3200,7 @@ static gboolean parse_fimp (FImport *fimp, gboolean compressed)
     parse_tracks (fimp, mhsd_1);
     if (fimp->error) return FALSE;
 
-    if (mhsd_3 != -1)
-	parse_playlists (fimp, mhsd_3);
-    else if (mhsd_2 != -1)
-	parse_playlists (fimp, mhsd_2);
-    else
+    if (mhsd_2 == -1 && mhsd_3 == -1)
     {  /* Very bad: no type 2 or type 3 mhsd which should hold the
 	  playlists */
 	g_set_error (&fimp->error,
@@ -3205,6 +3210,15 @@ static gboolean parse_fimp (FImport *fimp, gboolean compressed)
 		     cts->filename);
 	return FALSE;
     }
+
+    /* Standard playlists live in type 2; the podcasts playlist (when
+       present) lives in the special type 3 section. Read both so a
+       database written by iTunes or by an older libgpod keeps all of
+       its playlists. */
+    if (mhsd_2 != -1)
+	parse_playlists (fimp, mhsd_2);
+    if (mhsd_3 != -1)
+	parse_playlists (fimp, mhsd_3);
 
     if (mhsd_5 != -1) {
 	parse_playlists (fimp, mhsd_5);
@@ -5621,6 +5635,14 @@ static gboolean write_mhsd_playlists (FExport *fexp, guint32 mhsd_type)
     {
 	Itdb_Playlist *pl = gl->data;
 	g_return_val_if_fail (pl, FALSE);
+
+	/* The podcasts playlist belongs in the special type 3 section and
+	 * regular playlists belong in the type 2 section. Writing every
+	 * playlist into both sections duplicates each entry in the file. */
+	if ((mhsd_type == 3) && !itdb_playlist_is_podcasts (pl))
+	    continue;
+	if ((mhsd_type == 2) && itdb_playlist_is_podcasts (pl))
+	    continue;
 
 	write_playlist (fexp, pl, mhsd_type);
 	plcnt++;
