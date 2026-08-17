@@ -40,3 +40,31 @@ public final class Playlist: @unchecked Sendable {
         return result
     }
 }
+
+public extension iTunesDB {
+    /// Creates a new, empty, non-smart playlist and adds it to the database.
+    ///
+    /// The playlist is added to the in-memory database. Call `write()` after
+    /// this method returns successfully to persist the change.
+    @discardableResult
+    func addPlaylist(title: String) throws -> Playlist {
+        guard let playlistPointer = itdb_playlist_new(title, 0) else {
+            throw GPodError(message: "Could not create an iPod playlist.")
+        }
+        itdb_playlist_add(pointer, playlistPointer, -1)
+        return Playlist(pointer: playlistPointer, db: self)
+    }
+
+    /// Removes a playlist with the given name from the database, if one exists.
+    ///
+    /// Only the playlist entry is removed; the tracks it referenced stay on the iPod.
+    func removePlaylist(named name: String) {
+        guard let existing = playlists.first(where: { $0.name == name }) else { return }
+        itdb_playlist_remove(existing.pointer)
+    }
+
+    /// Appends a track to the end of a playlist, preserving manual ordering.
+    func add(track: Track, to playlist: Playlist) {
+        itdb_playlist_add_track(playlist.pointer, track.pointer, -1)
+    }
+}
