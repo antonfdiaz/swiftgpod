@@ -2211,6 +2211,8 @@ gboolean itdb_device_is_shuffle (const Itdb_Device *device)
 {
     const Itdb_IpodInfo *info;
 
+    g_return_val_if_fail (device, FALSE);
+
     info = itdb_device_get_ipod_info (device);
     switch (info->ipod_generation) {
         case ITDB_IPOD_GENERATION_UNKNOWN:
@@ -2242,6 +2244,16 @@ gboolean itdb_device_is_shuffle (const Itdb_Device *device)
         case ITDB_IPOD_GENERATION_IPHONE_3:
         case ITDB_IPOD_GENERATION_IPHONE_4:
         case ITDB_IPOD_GENERATION_IPAD_1:
+            /* Some shuffles (or shuffled images) have no SysInfo file, so
+             * model-number detection above can't identify them. Fall back to
+             * detecting the iTunesSD file, which only shuffles carry. */
+            if (device->mountpoint != NULL) {
+                gchar *sd_path = itdb_get_itunessd_path (device->mountpoint);
+                if (sd_path != NULL) {
+                    g_free (sd_path);
+                    return TRUE;
+                }
+            }
             return FALSE;
         case ITDB_IPOD_GENERATION_SHUFFLE_1:
         case ITDB_IPOD_GENERATION_SHUFFLE_2:
